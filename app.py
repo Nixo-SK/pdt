@@ -9,9 +9,19 @@ db = psycopg2.connect("host='localhost' dbname='postgres' user='postgres' passwo
 cursor = db.cursor()
 
 def parse_JSON(obj):
-	lng, lat = obj[0][16:-1].split()
-	return json.dumps({'lng': lng, 'lat': lat})
+	try:
+		lng, lat = obj[1][16:-1].split()
+		type = obj[0]
+	except IndexError:
+		lng, lat = obj[0][16:-1].split()
+		type = 'global'
+	finally:
+		return json.dumps({'type': type, 'lng': lng, 'lat': lat})
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static', 'favicon.ico')
+	
 @app.route('/')
 def index():
 	return send_from_directory('', 'index.html')		
@@ -21,7 +31,8 @@ def query():
 	try:
 		#lat = request.args.get('lat')
 		#lng = request.args.get('lng')
-		cursor.execute("select ST_AsEWKT(way) from planet_osm_point where amenity like 'hospital' or amenity like 'pharmacy'")
+		cursor.execute("select amenity, ST_AsEWKT(way) from planet_osm_point where amenity like 'hospital' or amenity like 'pharmacy'")
+		# cursor.execute("select ST_AsEWKT(way) from planet_osm_point where amenity like 'hospital' or amenity like 'pharmacy'")
 		return jsonify([parse_JSON(res) for res in cursor])
 	except Exception as e:
 		return jsonify(e)	

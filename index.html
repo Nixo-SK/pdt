@@ -4,6 +4,7 @@
     <title>PDT - Mikuska</title>
     <meta name="viewport" content="initial-scale=1.0">
     <meta charset="utf-8">
+	<link rel="icon" href="static/favicon.ico" type="image/x-icon">
 	<script src="http://code.jquery.com/jquery-3.1.1.min.js"></script>
     <style>
       #map {
@@ -19,6 +20,11 @@
   <body>
     <div id="map"></div>
     <script>
+	  image = {
+	    'hospital': 'static/hospital.png',
+		'pharmacy': 'static/pharmacy.png'
+	  };
+	  
 	  function initMap() {
         var map = new google.maps.Map(document.getElementById('map'), {
           center: {lat: 48.1536, lng: 17.072},
@@ -36,7 +42,8 @@
 				var lng = Number(JSON.parse(res[i]).lng);
 				var tmarker = new google.maps.Marker({
 				  map: map,
-				  position: {lat: lat, lng: lng}
+				  position: {lat: lat, lng: lng},
+				  icon: image[JSON.parse(res[i]).type]
 				});
 			  }
 			});
