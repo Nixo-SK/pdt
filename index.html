@@ -4,6 +4,7 @@
     <title>PDT - Mikuska</title>
     <meta name="viewport" content="initial-scale=1.0">
     <meta charset="utf-8">
+	<script src="http://code.jquery.com/jquery-3.1.1.min.js"></script>
     <style>
       #map {
         height: 100%;
@@ -21,19 +22,36 @@
 	  function initMap() {
         var map = new google.maps.Map(document.getElementById('map'), {
           center: {lat: 48.1536, lng: 17.072},
-          zoom: 15,
+          zoom: 8,
         });
 		
 		var marker = new google.maps.Marker({map: map});
+		marker.addListener('click', function() {
+		  $.ajax({
+			  type: "GET",
+			  url: "/query"
+			}).done(function(res) {
+			  for (var i = 0; i < res.length; i++) {
+				var lat = Number(JSON.parse(res[i]).lat);
+				var lng = Number(JSON.parse(res[i]).lng);
+				var tmarker = new google.maps.Marker({
+				  map: map,
+				  position: {lat: lat, lng: lng}
+				});
+			  }
+			});
+		});
+		
 		if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(function(position) {
             var pos = {
               lat: position.coords.latitude,
               lng: position.coords.longitude
             };
-
+			
             marker.setPosition(pos);
             map.setCenter(pos);
+			showObjects(map, pos);
           }, function() {
             handleLocationError(true, marker, map.getCenter());
           });
@@ -41,13 +59,13 @@
           handleLocationError(false, marker, map.getCenter());
         }
       }
-
+	  	  
       function handleLocationError(browserHasGeolocation, marker, pos) {
         marker.setPosition(pos);
         marker.setContent(browserHasGeolocation ?
                               'Error: The Geolocation service failed.' :
-                              'Error: Your browser doesn\'t support geolocation.');
-      }
+                              'Error: Your browser doesn\'t support geolocation.');  
+	  }
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAj8WPBWxG3AHFz19UjdZG8Eon91ZPaqa8&language=en&callback=initMap"
     async defer></script>
