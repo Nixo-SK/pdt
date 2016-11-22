@@ -125,12 +125,12 @@
 		  action: function() {
 			$.ajax({
 			  type: "GET",
-			  url: "/query"
+			  url: "/show_all"
 			}).done(function(res) {
 			  removeMarkers();
 			  for (var i in res) {
-				var lat = Number(JSON.parse(res[i]).lat);
-				var lng = Number(JSON.parse(res[i]).lng);
+				var lat = JSON.parse(res[i]).lat;
+				var lng = JSON.parse(res[i]).lng;
 				var type = JSON.parse(res[i]).type;
 				
 				markers[type][markers[type].length] = new google.maps.Marker({
