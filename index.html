@@ -23,7 +23,7 @@
 	  
 	  .container{
 	    cursor: pointer;
-		width: 100px;
+		width: 120px;
 		height: 100px;
 	  }
 	
@@ -64,8 +64,23 @@
 		border: 1px solid #ccc;
 		display: none;
 	  }
-	  
-	   .button:hover, .dropDownItemDiv:hover, .checkboxContainer:hover{
+
+	  .dropDownItemDiv{
+		padding-top: 3px; 
+		padding-bottom: 3px; 
+		padding-left: 5px; 
+		padding-right: 8px;
+	  }
+
+	  .dropDownBoldItemDiv{
+		padding-top: 3px; 
+		padding-bottom: 3px; 
+		padding-left: 5px; 
+		padding-right: 8px; 
+		font-weight:bold;
+	  }
+  
+      .button:hover, .dropDownItemDiv:hover, .dropDownBoldItemDiv:hover, .checkboxContainer:hover{
 		background-color: rgb(235, 235, 235);				
 	  }
 	
@@ -99,24 +114,67 @@
 	  var markers = {
 		'hospital': [],
 		'pharmacy': []
+	  };
+	  var regions = [];
+
+	  function initRegions() {
+	  	$.ajax({
+		  type: "GET",
+		  url: "/region_list"
+		}).done(function(res) {
+		  for (var i in res) {
+		  	var json = JSON.parse(res[i]);
+			var region = json.region;
+		  	var divOptions = {
+	    	  gmap: map,
+	    	  name: region,
+	    	  title: region,
+	    	  bold: true,
+	    	  action: function(event){
+	    		console.log(event.srcElement.title);
+	    	  }
+	    	}
+	    	regions.push(new optionDiv(divOptions));
+
+	    	for (var j in json.districts) {
+	    	  var district = json.districts[j];
+    		  var divOptions = {
+    	  	  	gmap: map,
+    	      	name: district,
+    	      	title: district,
+    	      	action: function(event){
+    		      console.log(event.srcElement.title);
+    	      	}
+    	      }
+    	      regions.push(new optionDiv(divOptions));
+	    	}
+	      }
+
+	      var regionDropDownDiv = new dropDownOptionsDiv({
+          	items: regions,
+          	id: "regionBoxDiv"        		
+          }); 
+
+          var regionDropDown = new dropDownControl({
+          	gmap: map,
+          	name: 'Regions',
+          	id: 'regions',
+          	title: 'Dropdown to show available regions',
+          	position: google.maps.ControlPosition.TOP_LEFT,
+          	dropDown: regionDropDownDiv,
+          	func: buttonBoxFunction
+          });
+		});
 	  }
-	  
+
 	  function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
           center: {lat: 48.1536, lng: 17.072},
           zoom: 8,
         });
-		
-		var clearButton = new buttonControl({
-		  gmap: map,
-	      name: 'ClearAll',
-		  id: 'clearButton',
-		  position: google.maps.ControlPosition.TOP_LEFT,
-		  action: function() {
-			removeMarkers();
-		  }
-        });
-		
+
+        initRegions();
+
         var searchButton = new buttonControl({
 		  gmap: map,
 	      name: 'Search',
@@ -129,9 +187,10 @@
 			}).done(function(res) {
 			  removeMarkers();
 			  for (var i in res) {
-				var lat = JSON.parse(res[i]).lat;
-				var lng = JSON.parse(res[i]).lng;
-				var type = JSON.parse(res[i]).type;
+			  	var json = JSON.parse(res[i])
+				var lat = json.lat;
+				var lng = json.lng;
+				var type = json.type;
 				
 				markers[type][markers[type].length] = new google.maps.Marker({
 				  map: map,
@@ -144,6 +203,17 @@
 			});
 		  }
         });
+
+        var clearButton = new buttonControl({
+		  gmap: map,
+	      name: 'ClearAll',
+		  id: 'clearButton',
+		  position: google.maps.ControlPosition.TOP_LEFT,
+		  action: function() {
+			removeMarkers();
+		  }
+        });
+		
 		
         var hospitalCheckBox = new checkBox({
 		  gmap: map,
@@ -160,19 +230,20 @@
           label: "Pharmacies",
 		  action: setMarkers
         });
-   
+
         var dropDownDiv = new dropDownOptionsDiv({
           items: [hospitalCheckBox, pharmacyCheckBox],
           id: "checkBoxDiv"        		
-        });               
-                
+        });    
+
         var filterDropDown = new dropDownControl({
           gmap: map,
           name: 'Filters',
           id: 'filters',
           title: 'Dropdown to show filtered objects',
           position: google.maps.ControlPosition.TOP_LEFT,
-          dropDown: dropDownDiv
+          dropDown: dropDownDiv,
+          func: checkBoxFunction
         });
 		
 		if (navigator.geolocation) {
@@ -241,11 +312,16 @@
 		return control;
 	  }
 	  
-	  function optionDiv(options) {
-		var control = document.createElement('DIV');
-		google.maps.event.addDomListener(control, 'click', options.action);
-		return control;
-      }
+	  function optionDiv(options){
+	   	var control = document.createElement('DIV');
+	   	control.innerHTML = options.name;
+	   	control.className = options.bold ? "dropDownBoldItemDiv" : "dropDownItemDiv";
+	   	control.title = options.title;
+	   	//control.id = options.id;
+	   	
+	   	google.maps.event.addDomListener(control, 'click', options.action);
+	   	return control;
+     }
      
       function checkBox(options){
      	var container = document.createElement('DIV');
@@ -290,6 +366,14 @@
       	}     
  		return container;        	
       }
+
+      function checkBoxFunction() {
+		  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block';
+	  };   
+
+	  function buttonBoxFunction() {
+		  (document.getElementById('regionBoxDiv').style.display == 'block') ? document.getElementById('regionBoxDiv').style.display = 'none' : document.getElementById('regionBoxDiv').style.display = 'block';
+	  };   	  
      
       function dropDownControl(options) {
     	var container = document.createElement('DIV');
@@ -308,9 +392,7 @@
 		container.appendChild(options.dropDown);
     	  
 		options.gmap.controls[options.position].push(container);
-		google.maps.event.addDomListener(control, 'click', function() {
-		  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block';
-		})      	  
+		google.maps.event.addDomListener(control, 'click', options.func);  	  
       }
 	  	  
       function handleLocationError(browserHasGeolocation, marker, pos) {
