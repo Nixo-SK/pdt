@@ -63,24 +63,10 @@
 		padding-top: 2px; 
 		border: 1px solid #ccc;
 		display: none;
-	  }
-
-	  .dropDownItemDiv{
-		padding-top: 3px; 
-		padding-bottom: 3px; 
-		padding-left: 5px; 
-		padding-right: 8px;
-	  }
-
-	  .dropDownBoldItemDiv{
-		padding-top: 3px; 
-		padding-bottom: 3px; 
-		padding-left: 5px; 
-		padding-right: 8px; 
-		font-weight:bold;
+		height: 100px;
 	  }
   
-      .button:hover, .dropDownItemDiv:hover, .dropDownBoldItemDiv:hover, .checkboxContainer:hover{
+      .button:hover, .checkboxContainer:hover{
 		background-color: rgb(235, 235, 235);				
 	  }
 	
@@ -115,55 +101,46 @@
 		'hospital': [],
 		'pharmacy': []
 	  };
-	  var regions = [];
+	  var dColors = ['#000000', '#0000FF', '#00FF00', '#00FFFF',
+	  				 '#FF0000', '#FF00FF', '#FFFF00', '#FFFFFF']
+	  var dCoords = [];
+	  var dBounds = [];
+	  var dRegions = [];
 
-	  function initRegions() {
+	  function initRegions(map) {
 	  	$.ajax({
 		  type: "GET",
 		  url: "/region_list"
 		}).done(function(res) {
+		  //l variable defines the length of arrays
+		  var l = 0;
 		  for (var i in res) {
-		  	var json = JSON.parse(res[i]);
-			var region = json.region;
-		  	var divOptions = {
-	    	  gmap: map,
-	    	  name: region,
-	    	  title: region,
-	    	  bold: true,
-	    	  action: function(event){
-	    		console.log(event.srcElement.title);
-	    	  }
-	    	}
-	    	regions.push(new optionDiv(divOptions));
 
+		  	var json = JSON.parse(res[i]);
 	    	for (var j in json.districts) {
-	    	  var district = json.districts[j];
-    		  var divOptions = {
-    	  	  	gmap: map,
-    	      	name: district,
-    	      	title: district,
-    	      	action: function(event){
-    		      console.log(event.srcElement.title);
-    	      	}
-    	      }
-    	      regions.push(new optionDiv(divOptions));
+
+	    	  var coords =  json.districts[j].coords;
+	    	  dBounds[l] = new google.maps.LatLngBounds();
+    		  dCoords[l] = [];
+    		  for (var k in coords) {
+    		  	var obj = new google.maps.LatLng(coords[k][1], coords[k][0]);
+    		  	dCoords[l].push(obj);
+    		  	dBounds[l].extend(obj);
+    		  }
+    		  dRegions[l] = new google.maps.Polygon({
+	            paths: dCoords[l],
+	            strokeColor: "#000000",
+	            strokeOpacity: 0.8,
+	            strokeWeight: 1,
+	            fillColor: dColors[i],
+	            fillOpacity: 0.35
+ 			  });
+ 			  dRegions[l++].setMap(map);
+ 			  //map.fitBounds(dBounds[l++]);
 	    	}
 	      }
 
-	      var regionDropDownDiv = new dropDownOptionsDiv({
-          	items: regions,
-          	id: "regionBoxDiv"        		
-          }); 
-
-          var regionDropDown = new dropDownControl({
-          	gmap: map,
-          	name: 'Regions',
-          	id: 'regions',
-          	title: 'Dropdown to show available regions',
-          	position: google.maps.ControlPosition.TOP_LEFT,
-          	dropDown: regionDropDownDiv,
-          	func: buttonBoxFunction
-          });
+	      getCurrentLocation(map);
 		});
 	  }
 
@@ -173,7 +150,17 @@
           zoom: 8,
         });
 
-        initRegions();
+        initRegions(map);
+
+        var clearButton = new buttonControl({
+		  gmap: map,
+	      name: 'ClearAll',
+		  id: 'clearButton',
+		  position: google.maps.ControlPosition.TOP_LEFT,
+		  action: function() {
+			removeMarkers();
+		  }
+        });
 
         var searchButton = new buttonControl({
 		  gmap: map,
@@ -203,17 +190,6 @@
 			});
 		  }
         });
-
-        var clearButton = new buttonControl({
-		  gmap: map,
-	      name: 'ClearAll',
-		  id: 'clearButton',
-		  position: google.maps.ControlPosition.TOP_LEFT,
-		  action: function() {
-			removeMarkers();
-		  }
-        });
-		
 		
         var hospitalCheckBox = new checkBox({
 		  gmap: map,
@@ -245,8 +221,10 @@
           dropDown: dropDownDiv,
           func: checkBoxFunction
         });
-		
-		if (navigator.geolocation) {
+      }
+
+      function getCurrentLocation(map) {
+      	if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(function(position) {
             var pos = {
               lat: position.coords.latitude,
@@ -369,11 +347,7 @@
 
       function checkBoxFunction() {
 		  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block';
-	  };   
-
-	  function buttonBoxFunction() {
-		  (document.getElementById('regionBoxDiv').style.display == 'block') ? document.getElementById('regionBoxDiv').style.display = 'none' : document.getElementById('regionBoxDiv').style.display = 'block';
-	  };   	  
+	  }; 	  
      
       function dropDownControl(options) {
     	var container = document.createElement('DIV');

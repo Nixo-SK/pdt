@@ -1,36 +1,46 @@
 import json
 import getpass
 import psycopg2
+import coord_parser
 from flask import Flask, jsonify, request, send_from_directory
 from queries import *
+from settings import *
+
 
 app = Flask(__name__)
-#db = psycopg2.connect("host='localhost' dbname='postgres' user='postgres' password='{0}'".format(getpass.getpass()))
-db = psycopg2.connect("host='localhost' dbname='postgres' user='postgres' password=rokogolf")
+app.debug = DEBUG
+
+db = psycopg2.connect("host={} dbname={} user={} password={}".format(
+	DB_HOST, DB_NAME, DB_USER, DB_PASS if DEBUG else getpass.getpass()))
 cursor = db.cursor()
 
-def parse_regions(rows):
-	region_dict = {}
-	for row in rows:
-		if row[0] in region_dict:
-			region_dict[row[0]].append(row[1])
-		else:
-			region_dict[row[0]] = [row[1]]
-	
-	return [json.dumps({'region': k, 'districts': v}) for k, v in sorted(region_dict.items())]
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory('static', 'favicon.ico')
+    return send_from_directory('static/icons', 'favicon.ico')
 	
 @app.route('/')
 def index():
 	return send_from_directory('', 'index.html')
 
 @app.route('/region_list')
-def regions():
+def region_list():
 	cursor.execute(REGION_LIST_QUERY)
-	return jsonify(parse_regions(cursor.fetchall()))
+
+	region_dict = {}
+	for region in cursor.fetchall():
+		district = {
+			'name': region[1], 
+			'coords': json.loads(region[2][35:-1])
+		}
+
+		if region[0] in region_dict:
+			region_dict[region[0]].append(district)
+		else:
+			region_dict[region[0]] = [district]
+	
+	return jsonify([json.dumps({
+		'region': k, 'districts': v}) for k, v in sorted(region_dict.items())])
 
 @app.route('/show_all')
 def show_all():	
@@ -43,5 +53,4 @@ def show_all():
 		for row in cursor.fetchall()])
 
 if __name__ == '__main__':
-	app.debug = True
 	app.run()
