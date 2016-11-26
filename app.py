@@ -23,6 +23,10 @@ def favicon():
 def index():
 	return send_from_directory('', 'index.html')
 
+@app.route('/available_types')
+def available_types():
+	return jsonify({'types': AMENITY_TYPES});
+
 @app.route('/region_list')
 def region_list():
 	cursor.execute(REGION_LIST_QUERY)

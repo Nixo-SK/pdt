@@ -1,3 +1,5 @@
+from settings import AMENITY_TYPES
+
 REGION_LIST_QUERY = """
 	SELECT region.name, district.name, ST_ASGEOJSON(district.way)
 	FROM planet_osm_line AS region 
@@ -15,5 +17,5 @@ DISTRICT_COORD_QUERY = """
 SHOW_ALL_QUERY = """
 	SELECT amenity, ST_ASGEOJSON(way)
 	FROM planet_osm_point 
-	WHERE amenity IN ('hospital', 'pharmacy')
-"""
+	WHERE amenity IN ('{}')
+""".format('\',\''.join(AMENITY_TYPES))

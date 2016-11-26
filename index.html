@@ -2,10 +2,10 @@
 <html>
   <head>
     <title>PDT - Mikuska</title>
-    <meta name="viewport" content="initial-scale=1.0" charset="utf-8">
-	<link rel="icon" href="static/favicon.ico" type="image/x-icon">
-	<script src="http://code.jquery.com/jquery-3.1.1.min.js"></script>
-    <style type="text/css">
+    <meta name='viewport' content='initial-scale=1.0' charset='utf-8'>
+	<link rel='icon' href='static/favicon.ico' type='image/x-icon'>
+	<script src='http://code.jquery.com/jquery-3.1.1.min.js'></script>
+    <style type='text/css'>
       html, body, #map {
         margin: 0;
         padding: 0;
@@ -18,12 +18,12 @@
 		border: 1px solid #ccc;
         background-color: #fff; 
         margin-top: 10px;
-        padding: 7.5px 7.5px;
+        padding: 10px 10px;
       }    
 	  
 	  .container{
 	    cursor: pointer;
-		width: 120px;
+		width: 80px;
 		height: 100px;
 	  }
 	
@@ -49,7 +49,7 @@
 		border: 1px solid #ccc;
         background-color: #fff; 
         margin-top: 10px;
-        padding: 7.5px 7.5px;
+        padding: 10px 10px;
 	  }	
 	
 	  .dropDownArrow{
@@ -63,7 +63,7 @@
 		padding-top: 2px; 
 		border: 1px solid #ccc;
 		display: none;
-		height: 100px;
+		height: 90px;
 	  }
   
       .button:hover, .checkboxContainer:hover{
@@ -93,24 +93,61 @@
     </style>
 	<script>
 	  var map;
-	  var image = {
-	    'hospital': 'static/hospital.png',
-		'pharmacy': 'static/pharmacy.png'
-	  };
-	  var markers = {
-		'hospital': [],
-		'pharmacy': []
-	  };
-	  var dColors = ['#000000', '#0000FF', '#00FF00', '#00FFFF',
-	  				 '#FF0000', '#FF00FF', '#FFFF00', '#FFFFFF']
+	  var types = [];
+	  var images = {};
+	  var markers = {};
+	  var checkBoxes = {};
+	  var checkBoxIds = [];
 	  var dCoords = [];
 	  var dBounds = [];
 	  var dRegions = [];
+	  var dColors = ['#000000', '#0000FF', '#00FF00', '#00FFFF',
+	  				 '#FF0000', '#FF00FF', '#FFFF00', '#FFFFFF']
 
-	  function initRegions(map) {
+	  function initTypes() {
 	  	$.ajax({
-		  type: "GET",
-		  url: "/region_list"
+		  type: 'GET',
+		  url: '/available_types'
+		}).done(function(res) {
+		  for (var i in res.types) {
+		  	type = res.types[i];
+		  	types.push(type);
+		  	images[type] = 'static/icons/' + type + '.png';
+		  	markers[type] = [];
+		  	var newBox = new checkBox({
+		  	  gmap: map,
+		  	  title: 'Show ' + type,
+		  	  id: type + 'Check',
+		  	  label: type,
+		  	  action: setMarkers
+        	});
+		  	checkBoxIds.push(newBox[0]);
+		  	checkBoxes[type] = newBox[1];
+		  }
+
+		  var dropDownDiv = new dropDownOptionsDiv({
+           items: checkBoxIds,
+          	id: 'checkBoxDiv'        		
+          });    
+
+          var filterDropDown = new dropDownControl({
+          	gmap: map,
+          	name: 'Filters',
+          	id: 'filters',
+          	title: 'Dropdown to show filtered objects',
+          	position: google.maps.ControlPosition.TOP_LEFT,
+          	dropDown: dropDownDiv,
+          	func:  function() {
+		  	  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block'
+	 		}
+          });
+		});
+	  }
+
+	  function initRegions() {
+	  	$.ajax({
+		  type: 'GET',
+		  url: '/region_list'
 		}).done(function(res) {
 		  //l variable defines the length of arrays
 		  var l = 0;
@@ -129,14 +166,13 @@
     		  }
     		  dRegions[l] = new google.maps.Polygon({
 	            paths: dCoords[l],
-	            strokeColor: "#000000",
+	            strokeColor: '#000000',
 	            strokeOpacity: 0.8,
 	            strokeWeight: 1,
 	            fillColor: dColors[i],
 	            fillOpacity: 0.35
  			  });
  			  dRegions[l++].setMap(map);
- 			  //map.fitBounds(dBounds[l++]);
 	    	}
 	      }
 
@@ -150,7 +186,8 @@
           zoom: 8,
         });
 
-        initRegions(map);
+        initTypes();
+        initRegions();
 
         var clearButton = new buttonControl({
 		  gmap: map,
@@ -169,8 +206,8 @@
 		  position: google.maps.ControlPosition.TOP_LEFT,
 		  action: function() {
 			$.ajax({
-			  type: "GET",
-			  url: "/show_all"
+			  type: 'GET',
+			  url: '/show_all'
 			}).done(function(res) {
 			  removeMarkers();
 			  for (var i in res) {
@@ -179,47 +216,16 @@
 				var lng = json.lng;
 				var type = json.type;
 				
-				markers[type][markers[type].length] = new google.maps.Marker({
+				markers[type].push(new google.maps.Marker({
 				  map: map,
 				  position: {lat: lat, lng: lng},
-				  icon: image[type],
-				  visible: (document.getElementById(type + "Check").style.display == 'block')
-				});
+				  icon: images[type],
+				  visible: (checkBoxes[type].style.display == 'block')
+				}));
 			  }
 			  setMarkers();
 			});
 		  }
-        });
-		
-        var hospitalCheckBox = new checkBox({
-		  gmap: map,
-		  title: "Show hospitals",
-		  id: "hospitalCheck",
-		  label: "Hospitals",
-		  action: setMarkers
-        });
-        
-        var pharmacyCheckBox = new checkBox({
-          gmap: map,
-          title: "Show pharmacies",
-          id: "pharmacyCheck",
-          label: "Pharmacies",
-		  action: setMarkers
-        });
-
-        var dropDownDiv = new dropDownOptionsDiv({
-          items: [hospitalCheckBox, pharmacyCheckBox],
-          id: "checkBoxDiv"        		
-        });    
-
-        var filterDropDown = new dropDownControl({
-          gmap: map,
-          name: 'Filters',
-          id: 'filters',
-          title: 'Dropdown to show filtered objects',
-          position: google.maps.ControlPosition.TOP_LEFT,
-          dropDown: dropDownDiv,
-          func: checkBoxFunction
         });
       }
 
@@ -240,42 +246,27 @@
       }
 	  
 	  function setMarkers() {
-	    if (document.getElementById('hospitalCheck').style.display == 'block') {
-          for (var i in markers['hospital']) {
-		    markers['hospital'][i].setVisible(true);
-			//markers['hospital'][i].setMap(map);
-		  }
-		} else {
-		  for (var i in markers['hospital']) {
-		    markers['hospital'][i].setVisible(false);
-			//markers['hospital'][i].setMap(null);
-		  }
-		}
-		if (document.getElementById('pharmacyCheck').style.display == 'block') {
-		  for (var i in markers['pharmacy']) {
-		    markers['pharmacy'][i].setVisible(true);
-			//markers['pharmacy'][i].setMap(map);
-		  }
-		} else {
-		  for (var i in markers['pharmacy']) {
-		    markers['pharmacy'][i].setVisible(false);
-			//markers['pharmacy'][i].setMap(null);
+	  	for (var i in types) {
+		  if (checkBoxes[types[i]].style.display == 'block') {
+	        for (var j in markers[types[i]]) {
+		      markers[types[i]][j].setVisible(true);
+		    }
+		  } else {
+		    for (var j in markers[types[i]]) {
+		      markers[types[i]][j].setVisible(false);
+			}
 		  }
 		}
 	  }
 	  
 	  function removeMarkers() {
-		 for (var i in markers['hospital']) {
-		    markers['hospital'][i].setMap(null);
-			markers['hospital'][i] = null;
-		 }
-		 markers['hospital'] = [];
-		 
-		 for (var i in markers['pharmacy']) {
-		    markers['pharmacy'][i].setMap(null);
-			markers['pharmacy'][i] = null;
-		 }
-		 markers['pharmacy'] = [];
+	  	for (var i in types) {
+		  for (var j in markers[types[i]]) {
+		    markers[types[i]][j].setMap(null);
+			markers[types[i]][j] = null;
+		  }
+		  markers[types[i]] = [];
+		}
 	  }
 	  
 	  function buttonControl(options) {
@@ -293,33 +284,32 @@
 	  function optionDiv(options){
 	   	var control = document.createElement('DIV');
 	   	control.innerHTML = options.name;
-	   	control.className = options.bold ? "dropDownBoldItemDiv" : "dropDownItemDiv";
+	   	control.className = options.bold ? 'dropDownBoldItemDiv' : 'dropDownItemDiv';
 	   	control.title = options.title;
-	   	//control.id = options.id;
-	   	
+
 	   	google.maps.event.addDomListener(control, 'click', options.action);
 	   	return control;
      }
      
       function checkBox(options){
      	var container = document.createElement('DIV');
-   	  	container.className = "checkboxContainer";
-   	  	
+   	  	container.className = 'CheckboxContainer';
+
      	var span = document.createElement('SPAN');
-     	span.role = "checkbox";
-     	span.className = "checkboxSpan";
+     	span.role = 'checkbox';
+     	span.className = 'checkboxSpan';
      	        	        	
      	var bDiv = document.createElement('DIV');
-   	  	bDiv.className = "blankDiv";      	  	
+   	  	bDiv.className = 'blankDiv';      	  	
    	  	bDiv.id = options.id;
 		bDiv.style.display = 'block';
    	  	
    	  	var image = document.createElement('IMG');
-   	  	image.className = "blankImg";
-   	  	image.src = "http://maps.gstatic.com/mapfiles/mv/imgs8.png";
+   	  	image.className = 'blankImg';
+   	  	image.src = 'http://maps.gstatic.com/mapfiles/mv/imgs8.png';
    	  	
    	  	var label = document.createElement('LABEL');
-   	  	label.className = "checkboxLabel";
+   	  	label.className = 'checkboxLabel';
    	  	label.innerHTML = options.label;
    	  	
    	  	bDiv.appendChild(image);
@@ -331,23 +321,19 @@
    	  	  (document.getElementById(bDiv.id).style.display == 'block') ? document.getElementById(bDiv.id).style.display = 'none' : document.getElementById(bDiv.id).style.display = 'block';
 		  options.action(); 
    	  	})
-   	  	return container;
+   	  	return [container, bDiv];
 	  }
 	  
       function dropDownOptionsDiv(options) {
       	var container = document.createElement('DIV');
-      	container.className = "dropDownOptionsDiv";
+      	container.className = 'dropDownOptionsDiv';
       	container.id = options.id;
       	
-      	for (var i = 0; i < options.items.length; i++) {
+      	for (var i in options.items) {
       	  container.appendChild(options.items[i]);
       	}     
  		return container;        	
-      }
-
-      function checkBoxFunction() {
-		  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block';
-	  }; 	  
+      }	  
      
       function dropDownControl(options) {
     	var container = document.createElement('DIV');
@@ -359,7 +345,7 @@
 		
 		var arrow = document.createElement('IMG');
 		arrow.className = 'dropDownArrow';
-		arrow.src = "http://maps.gstatic.com/mapfiles/arrow-down.png";
+		arrow.src = 'http://maps.gstatic.com/mapfiles/arrow-down.png';
 		
 		control.appendChild(arrow);	      		
 		container.appendChild(control);    
@@ -374,10 +360,10 @@
         marker.setContent(browserHasGeolocation ? 'Error: The Geolocation service failed.' : 'Error: Your browser doesn\'t support geolocation.');  
 	  }
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAj8WPBWxG3AHFz19UjdZG8Eon91ZPaqa8&language=en&callback=initMap"
+    <script src='https://maps.googleapis.com/maps/api/js?key=AIzaSyAj8WPBWxG3AHFz19UjdZG8Eon91ZPaqa8&language=en&callback=initMap'
     async defer></script>
   </head>
   <body>
-    <div id="map"></div>
+    <div id='map'></div>
   </body>
 </html>
