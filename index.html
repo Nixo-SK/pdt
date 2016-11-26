@@ -100,7 +100,7 @@
 	  var checkBoxIds = [];
 	  var dCoords = [];
 	  var dBounds = [];
-	  var dRegions = [];
+	  var dDistricts = [];
 	  var dColors = ['#000000', '#0000FF', '#00FF00', '#00FFFF',
 	  				 '#FF0000', '#FF00FF', '#FFFF00', '#FFFFFF']
 
@@ -144,10 +144,10 @@
 		});
 	  }
 
-	  function initRegions() {
+	  function initDistricts() {
 	  	$.ajax({
 		  type: 'GET',
-		  url: '/region_list'
+		  url: '/district_list'
 		}).done(function(res) {
 		  //l variable defines the length of arrays
 		  var l = 0;
@@ -164,8 +164,9 @@
     		  	dCoords[l].push(obj);
     		  	dBounds[l].extend(obj);
     		  }
-    		  dRegions[l] = new google.maps.Polygon({
+    		  dDistricts[l] = new google.maps.Polygon({
     		  	id: l,
+    		  	name: json.districts[j].name,
 	            paths: dCoords[l],
 	            strokeColor: '#000000',
 	            strokeOpacity: 1,
@@ -173,11 +174,18 @@
 	            fillColor: dColors[i],
 	            fillOpacity: 0.35
  			  });
- 			  dRegions[l].addListener('click', function() {
+ 			  dDistricts[l].addListener('click', function() {
+ 			  	removeMarkers();
  			  	map.setCenter(dBounds[this.id].getCenter());
  			  	map.setZoom(11);
- 			  });
- 			  dRegions[l++].setMap(map);
+ 			  	$.ajax({
+			  	  type: 'GET',
+			  	  url: '/show_by_district?district=' + this.name
+				}).done(function(res) {
+			      showMarkers(res);
+ 			  	});
+			  });
+ 			  dDistricts[l++].setMap(map);
 	    	}
 	      }
 
@@ -192,7 +200,7 @@
         });
 
         initTypes();
-        initRegions();
+        initDistricts();
 
         var clearButton = new buttonControl({
 		  gmap: map,
@@ -210,25 +218,12 @@
 		  id: 'searchButton',
 		  position: google.maps.ControlPosition.TOP_LEFT,
 		  action: function() {
+		  	removeMarkers();
 			$.ajax({
 			  type: 'GET',
 			  url: '/show_all'
 			}).done(function(res) {
-			  removeMarkers();
-			  for (var i in res) {
-			  	var json = JSON.parse(res[i])
-				var lat = json.lat;
-				var lng = json.lng;
-				var type = json.type;
-				
-				markers[type].push(new google.maps.Marker({
-				  map: map,
-				  position: {lat: lat, lng: lng},
-				  icon: images[type],
-				  visible: (checkBoxes[type].style.display == 'block')
-				}));
-			  }
-			  setMarkers();
+			  showMarkers(res);
 			});
 		  }
         });
@@ -248,6 +243,23 @@
         } else {
           handleLocationError(false, marker, map.getCenter());
         }
+      }
+
+      function showMarkers(res) {
+	  	for (var i in res) {
+	  	  var json = JSON.parse(res[i])
+		  var lat = json.lat;
+		  var lng = json.lng;
+		  var type = json.type;
+		
+		  markers[type].push(new google.maps.Marker({
+		   map: map,
+		   position: {lat: lat, lng: lng},
+		   icon: images[type],
+		  	visible: (checkBoxes[type].style.display == 'block')
+		  }));
+	  	}
+	  	setMarkers();
       }
   
 	  function setMarkers() {
