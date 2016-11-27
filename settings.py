@@ -8,4 +8,5 @@ DB_USER = 'postgres'
 DB_PASS = 'somepass'
 
 # Available types
-AMENITY_TYPES = ['clinic', 'dentist', 'doctors', 'hospital', 'pharmacy']
+AMENITY_TYPES = ['dentist', 'hospital', 'pharmacy']
+DB_AMENITY_TYPES = ['clinic', 'dentist', 'doctors', 'hospital', 'pharmacy']

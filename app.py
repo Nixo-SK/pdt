@@ -16,14 +16,15 @@ cursor = db.cursor()
 def parse_result(rows):
 	return jsonify([
 		json.dumps({
-			'type': row[0], 
+			'type': row[0] if row[0] in AMENITY_TYPES else 'hospital', 
 			'lng': json.loads(row[1])['coordinates'][0], 
-			'lat': json.loads(row[1])['coordinates'][1]}) 
+			'lat': json.loads(row[1])['coordinates'][1],
+			'name': row[2]}) 
 		for row in rows])
 
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory('static/icons', 'favicon.ico')
+    return send_from_directory('static', 'favicon.ico')
 	
 @app.route('/')
 def index():
@@ -62,7 +63,6 @@ def show_all():
 	'''
 	Scenario 1
 	* shows all requested objects
-	* objects can be filtered by type (amenity)
 	'''
 	cursor.execute(SHOW_ALL_QUERY)
 	return parse_result(cursor.fetchall())
@@ -72,10 +72,21 @@ def show_by_district():
 	'''
 	Scenario 2
 	* shows all requested objects that belong to distrinct parsed as a parameter
-	* objects still can be filtered by type (amenity)
 	'''
 	cursor.execute(SHOW_BY_DISTRICT_QUERY.replace(
 		'district', '\'' + request.args.get('district') + '\''))
+	return parse_result(cursor.fetchall())
+
+@app.route('/show_by_coords')
+def show_by_coords():	
+	'''
+	Scenario 3
+	* shows all requested objects that are in distance to 
+	'''
+	cursor.execute(SHOW_BY_COORDS_QUERY.replace(
+		'lat', request.args.get('lat')).replace(
+		'lng', request.args.get('lng')).replace(
+		'dist', request.args.get('dist')))
 	return parse_result(cursor.fetchall())
 
 if __name__ == '__main__':

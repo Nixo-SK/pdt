@@ -11,8 +11,8 @@
         padding: 0;
         height: 100%;
       }
-	  
-	  .button{
+
+      .button{
 	    cursor: pointer;
 		font-weight:bold;
 		border: 1px solid #ccc;
@@ -23,7 +23,7 @@
 	  
 	  .container{
 	    cursor: pointer;
-		width: 80px;
+		width: 87px;
 		height: 100px;
 	  }
 	
@@ -63,21 +63,18 @@
 		padding-top: 2px; 
 		border: 1px solid #ccc;
 		display: none;
-		height: 90px;
-	  }
-  
-      .button:hover, .checkboxContainer:hover{
-		background-color: rgb(235, 235, 235);				
+		height: 75px;
+		width: 85px;
 	  }
 	
-	  .checkboxContainer{
+	  .checkBoxContainer{
 		padding-top: 3px; 
 		padding-bottom: 3px; 
 		padding-left: 5px; 
 		padding-right: 8px; 
 	  }	
 	  
-	  .checkboxSpan{
+	  .checkBoxSpan{
 		margin-right: 5px;
 		display: inline-block; 
 		border-width: 1px; 
@@ -87,12 +84,28 @@
 		border-color: rgb(200, 200, 200); 		
 	  }
 	
-	  .checkboxLabel{
+	  .checkBoxLabel{
 		cursor: pointer;
+	  }
+
+	  .textBox{
+        cursor: pointer;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        margin-top: 10px;
+        padding: 10px 10px;
+        width: 50px;
+        height: 13px;
+	  }
+
+	  .button:hover, .checkBoxContainer:hover, .textBox:hover{
+		background-color: rgb(235, 235, 235);				
 	  }
     </style>
 	<script>
 	  var map;
+	  var cursor;
+	  var defPosition = {lat: 48.1536, lng: 17.072};
 	  var types = [];
 	  var images = {};
 	  var markers = {};
@@ -112,9 +125,9 @@
 		  for (var i in res.types) {
 		  	type = res.types[i];
 		  	types.push(type);
-		  	images[type] = 'static/icons/' + type + '.png';
+		  	images[type] = 'static/' + type + '.png';
 		  	markers[type] = [];
-		  	var newBox = new checkBox({
+		  	var newBox = new checkBoxControl({
 		  	  gmap: map,
 		  	  title: 'Show ' + type,
 		  	  id: type + 'Check',
@@ -136,11 +149,8 @@
           	id: 'filters',
           	title: 'Dropdown to show filtered objects',
           	position: google.maps.ControlPosition.TOP_LEFT,
-          	dropDown: dropDownDiv,
-          	func:  function() {
-		  	  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block'
-	 		}
-          });
+          	dropDown: dropDownDiv
+	 	  });
 		});
 	  }
 
@@ -172,10 +182,11 @@
 	            strokeOpacity: 1,
 	            strokeWeight: 1,
 	            fillColor: dColors[i],
-	            fillOpacity: 0.35
+	            fillOpacity: 0.2
  			  });
  			  dDistricts[l].addListener('click', function() {
  			  	removeMarkers();
+ 			  	cursor.setPosition(dBounds[this.id].getCenter());
  			  	map.setCenter(dBounds[this.id].getCenter());
  			  	map.setZoom(11);
  			  	$.ajax({
@@ -195,7 +206,7 @@
 
 	  function initMap() {
         map = new google.maps.Map(document.getElementById('map'), {
-          center: {lat: 48.1536, lng: 17.072},
+          center: defPosition,
           zoom: 8,
         });
 
@@ -227,6 +238,35 @@
 			});
 		  }
         });
+
+        cursor = new google.maps.Marker({
+		  map: map,
+		  position: defPosition,
+		  draggable: true,
+		  icon: 'static/cursor.png',
+		  animation: google.maps.Animation.DROP
+		});
+
+		var cursorTextBox = document.getElementById('textBox');
+        map.controls[google.maps.ControlPosition.TOP_LEFT].push(cursorTextBox);
+
+        cursorTextBox.addEventListener('keyup', function(f) {
+          var value = f.target.value.trim().toLowerCase();
+          if (isNaN(value) || value > 1000) {
+          	f.target.value = '';
+          	google.maps.event.clearListeners(cursor, 'dragend');
+          } else {
+          	cursor.addListener('dragend', function() {
+			  removeMarkers();
+			  $.ajax({
+			    type: 'GET',
+			    url: '/show_by_coords?lat=' + cursor.getPosition().lat() + '&lng=' + cursor.getPosition().lng() + '&dist=' + value / 100
+			  }).done(function(res) {
+			    showMarkers(res);
+			  });
+		  	});
+          }
+        });
       }
 
       function getCurrentLocation(map) {
@@ -237,6 +277,7 @@
               lng: position.coords.longitude
             };
             map.setCenter(pos);
+            cursor.setPosition(pos);
           }, function() {
             handleLocationError(true, marker, map.getCenter());
           });
@@ -248,16 +289,20 @@
       function showMarkers(res) {
 	  	for (var i in res) {
 	  	  var json = JSON.parse(res[i])
-		  var lat = json.lat;
-		  var lng = json.lng;
 		  var type = json.type;
 		
 		  markers[type].push(new google.maps.Marker({
-		   map: map,
-		   position: {lat: lat, lng: lng},
-		   icon: images[type],
-		  	visible: (checkBoxes[type].style.display == 'block')
+		    map: map,
+		    position: {lat: json.lat, lng: json.lng},
+		    icon: images[type],
+		    visible: checkBoxes[type].style.display == 'block',
+		    infoWindow: new google.maps.InfoWindow({
+		      content: (json.name || '') + ' (' + json.lat + ' ' + json.lng + ')'})
 		  }));
+
+		  markers[type][markers[type].length - 1].addListener('click', function() {
+		  	this.infoWindow.open(map, this);
+		  })
 	  	}
 	  	setMarkers();
       }
@@ -293,7 +338,6 @@
 		control.index = 1;
 
 		options.gmap.controls[options.position].push(control);
-
 		google.maps.event.addDomListener(control, 'click', options.action);
 		return control;
 	  }
@@ -306,15 +350,15 @@
 
 	   	google.maps.event.addDomListener(control, 'click', options.action);
 	   	return control;
-     }
-     
-      function checkBox(options){
+      }
+
+	  function checkBoxControl(options){
      	var container = document.createElement('DIV');
-   	  	container.className = 'CheckboxContainer';
+   	  	container.className = 'checkBoxContainer';
 
      	var span = document.createElement('SPAN');
-     	span.role = 'checkbox';
-     	span.className = 'checkboxSpan';
+     	span.role = 'checkBox';
+     	span.className = 'checkBoxSpan';
      	        	        	
      	var bDiv = document.createElement('DIV');
    	  	bDiv.className = 'blankDiv';      	  	
@@ -326,7 +370,7 @@
    	  	image.src = 'http://maps.gstatic.com/mapfiles/mv/imgs8.png';
    	  	
    	  	var label = document.createElement('LABEL');
-   	  	label.className = 'checkboxLabel';
+   	  	label.className = 'checkBoxLabel';
    	  	label.innerHTML = options.label;
    	  	
    	  	bDiv.appendChild(image);
@@ -369,9 +413,10 @@
 		container.appendChild(options.dropDown);
     	  
 		options.gmap.controls[options.position].push(container);
-		google.maps.event.addDomListener(control, 'click', options.func);  	  
+		google.maps.event.addDomListener(control, 'click', function() {
+		  (document.getElementById('checkBoxDiv').style.display == 'block') ? document.getElementById('checkBoxDiv').style.display = 'none' : document.getElementById('checkBoxDiv').style.display = 'block'});  	  
       }
-	  	  
+
       function handleLocationError(browserHasGeolocation, marker, pos) {
         marker.setPosition(pos);
         marker.setContent(browserHasGeolocation ? 'Error: The Geolocation service failed.' : 'Error: Your browser doesn\'t support geolocation.');  
@@ -381,6 +426,7 @@
     async defer></script>
   </head>
   <body>
+  	<input id="textBox" class="textBox" placeholder="km">
     <div id='map'></div>
   </body>
 </html>
