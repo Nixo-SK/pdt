@@ -1,5 +1,7 @@
 # App config
-DEBUG = True
+DEBUG = False
+HOST = 'localhost' 
+PORT = '5000'
 
 # Database config
 DB_HOST = 'localhost'

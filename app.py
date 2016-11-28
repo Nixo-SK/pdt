@@ -90,4 +90,4 @@ def show_by_coords():
 	return parse_result(cursor.fetchall())
 
 if __name__ == '__main__':
-	app.run()
+	app.run() if DEBUG else app.run(host=HOST, port=PORT)

@@ -1,7 +1,7 @@
 from settings import DB_AMENITY_TYPES
 
 DISTRICT_LIST_QUERY = """
-	SELECT region.name, district.name, ST_ASGEOJSON(district.way)
+	SELECT region.name, district.name, ST_AsGeoJSON(district.way)
 	FROM planet_osm_line AS region 
 	JOIN planet_osm_line AS district 
 	ON region.ref = substring(district.ref FROM 0 for 6)
@@ -14,7 +14,7 @@ DISTRICT_LIST_QUERY = """
 Query that finds all objects by amenity
 """
 SHOW_ALL_QUERY = """
-	SELECT amenity AS type, ST_ASGEOJSON(way), name
+	SELECT amenity AS type, ST_AsGeoJSON(way), name
 	FROM planet_osm_point 
 	WHERE amenity IN ('{}')
 """.format('\',\''.join(DB_AMENITY_TYPES))
